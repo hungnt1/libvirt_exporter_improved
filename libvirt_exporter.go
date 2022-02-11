@@ -33,6 +33,13 @@ import (
 	"gopkg.in/alecthomas/kingpin.v2"
 )
 
+type NovaMetadata struct {
+	XMLName     xml.Name `xml:"instance"`
+	Name     	string  `xml:"name"`
+}
+
+
+
 var (
 	libvirtUpDesc = prometheus.NewDesc(
 		prometheus.BuildFQName("libvirt", "", "up"),
@@ -265,13 +272,37 @@ func ReadStealTime(pid int) (float64, error) {
 // It then calls ReadStealTime for every thread to obtain its steal times
 func CollectDomainStealTime(ch chan<- prometheus.Metric, domain *libvirt.Domain) error {
 	var totalStealTime float64
-	var domainName string
+	// var domainName string
 
-	// Get the domain name
-	domainName, err := domain.GetName()
+	// // Get the domain name
+	// domainName, err := domain.GetName()
+	// if err != nil {
+	// 	return err
+	// }
+
+
+	// use openstack vm replace domain name on libvirt
+	// collect openstack vm name on metdata 
+	// virDomainModificationImpact https://libvirt.org/html/libvirt-libvirt-domain.html#virDomainModificationImpact
+	// virDomainMetadataType https://libvirt.org/html/libvirt-libvirt-domain.html#virDomainMetadataType
+
+	// 2 : Operate on <metadata>
+	// http://openstack.org/xmlns/libvirt/nova/1.0 uri namespace to get data
+	// 0 : get on current domain state.
+
+	var NovaDetail NovaMetadata
+
+	NovaMetadatXML, err := domain.GetMetadata(2, "http://openstack.org/xmlns/libvirt/nova/1.0" , 0)
 	if err != nil {
 		return err
 	}
+
+	if err := xml.Unmarshal([]byte(NovaMetadatXML), &NovaDetail); err != nil {
+        panic(err)
+    }
+
+	var domainName = NovaDetail.Name
+
 
 	// query QEMU directly to ask PID numbers of its CPU threads
 	resultJSON, err := domain.QemuMonitorCommand("{\"execute\": \"query-cpus\"}", libvirt.DOMAIN_QEMU_MONITOR_COMMAND_DEFAULT)
@@ -306,10 +337,34 @@ func CollectDomainStealTime(ch chan<- prometheus.Metric, domain *libvirt.Domain)
 
 // CollectDomain extracts Prometheus metrics from a libvirt domain.
 func CollectDomain(ch chan<- prometheus.Metric, stat libvirt.DomainStats) error {
-	domainName, err := stat.Domain.GetName()
+
+	// note: not use domain name when export for openstack
+	// domainName, err := stat.Domain.GetName()
+	// if err != nil {
+	// 	return err
+	// }
+
+	// use openstack vm replace domain name on libvirt
+	// collect openstack vm name on metdata 
+	// virDomainModificationImpact https://libvirt.org/html/libvirt-libvirt-domain.html#virDomainModificationImpact
+	// virDomainMetadataType https://libvirt.org/html/libvirt-libvirt-domain.html#virDomainMetadataType
+
+	// 2 : Operate on <metadata>
+	// http://openstack.org/xmlns/libvirt/nova/1.0 uri namespace to get data
+	// 0 : get on current domain state.
+
+	var NovaDetail NovaMetadata
+
+	NovaMetadatXML, err := stat.Domain.GetMetadata(2, "http://openstack.org/xmlns/libvirt/nova/1.0" , 0)
 	if err != nil {
 		return err
 	}
+
+	if err := xml.Unmarshal([]byte(NovaMetadatXML), &NovaDetail); err != nil {
+        panic(err)
+    }
+
+	var domainName = NovaDetail.Name
 
 	// Decode XML description of domain to get block device names, etc.
 	xmlDesc, err := stat.Domain.GetXMLDesc(0)
@@ -321,6 +376,7 @@ func CollectDomain(ch chan<- prometheus.Metric, stat libvirt.DomainStats) error 
 	if err != nil {
 		return err
 	}
+
 
 	// Report domain info.
 	info, err := stat.Domain.GetInfo()
@@ -626,6 +682,7 @@ func CollectDomain(ch chan<- prometheus.Metric, stat libvirt.DomainStats) error 
 		float64(used_percent),
 		domainName)
 
+		
 	return nil
 }
 

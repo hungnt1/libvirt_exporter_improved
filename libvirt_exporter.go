@@ -292,7 +292,7 @@ func CollectDomainStealTime(ch chan<- prometheus.Metric, domain *libvirt.Domain)
 
 	var NovaDetail NovaMetadata
 
-	NovaMetadatXML, err := domain.GetMetadata(2, "http://openstack.org/xmlns/libvirt/nova/1.0" , 0)
+	NovaMetadatXML, err := domain.GetMetadata(2, "http://openstack.org/xmlns/libvirt/nova/1.1" , 0)
 	if err != nil {
 		return err
 	}
@@ -355,7 +355,7 @@ func CollectDomain(ch chan<- prometheus.Metric, stat libvirt.DomainStats) error 
 
 	var NovaDetail NovaMetadata
 
-	NovaMetadatXML, err := stat.Domain.GetMetadata(2, "http://openstack.org/xmlns/libvirt/nova/1.0" , 0)
+	NovaMetadatXML, err := stat.Domain.GetMetadata(2, "http://openstack.org/xmlns/libvirt/nova/1.1" , 0)
 	if err != nil {
 		return err
 	}
